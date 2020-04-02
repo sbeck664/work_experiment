@@ -27,3 +27,4 @@ for the service.  You can then connect a client chat app to the server running
 in kubenetes using
   go run chat.go --mode client --port <external TCP port>
 
+N.B. much of this may need to be done as root
