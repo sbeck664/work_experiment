@@ -1,5 +1,9 @@
 Test using Go with avro
 
+Get the Go avro package:
+
+  go get gopkg.in/avro.v0
+
 Firstly follow the instructions in sb/helm_stuff/README.txt to get a chat server service set up (only follow the server related steps)
 
 Use 'kubectl get services' to find out the external TCP port for the server service then run the following to start up a client:
