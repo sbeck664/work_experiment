@@ -61,7 +61,9 @@ func (client *Client) receive() {
         }
         if length > 0 {
             decodedMessage := decode(message)
-            fmt.Printf(decodedMessage.Colour, decodedMessage.Author + ": " + decodedMessage.Contents + "\n")
+            if decodedMessage.Author != "" {
+                fmt.Printf(decodedMessage.Colour, decodedMessage.Author + ": " + decodedMessage.Contents + "\n")
+            }
         }
     }
 }
@@ -77,9 +79,9 @@ func encode(name string, colour string, contents string) (encodedMessage []byte)
 
     var buf bytes.Buffer
     encoder := avro.NewBinaryEncoder(&buf)
-    err := writer.Write(message, encoder)
-    if err != nil {
-        log.Fatal(err)
+    error := writer.Write(message, encoder)
+    if error != nil {
+        return []byte{}
     }
     
     return buf.Bytes()
@@ -91,7 +93,7 @@ func decode(encodedAvro []byte) (decodedMessage Message) {
     decoder := avro.NewBinaryDecoder(encodedAvro)
     error := reader.Read(&message, decoder)
     if error != nil {
-        log.Fatal(error)
+        message.Author = ""
     }
     
     return message
