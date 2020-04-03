@@ -1,26 +1,21 @@
 package main
 
-// #cgo LDFLAGS: -L . -lqpid -lqpidmessaging -lstdc++
-// #include <stdlib.h>
-// #include "qpid.h"
-import "C"
-
 import "fmt"
-import "unsafe"
+import "../go_and_qpid/qpid"
 
 func main() {
 
-    address := C.CString("localhost:5672")
-    conn := C.new_qpid_connection(address)
-    C.free(unsafe.Pointer(address))
+    conn := qpid.NewQpidConnection("localhost:5672")
 
-    rec_queue := C.CString("receiver_queue")
-    C.add_receiver(conn, rec_queue)
-    C.free(unsafe.Pointer(address))
+    qpid.AddReceiver(conn, "receiver_queue")
 
-    mess := C.receive_message(conn)
-    mess_bytes := C.GoBytes(mess.data, mess.length)
+    qpid.AddSender(conn, "sender1", "receiver_queue")
 
-    fmt.Println("Received ", mess_bytes)
-    C.delete_qpid_connection(conn)
+    out_mess := []byte("a message")
+    qpid.SendMessage(conn, "sender1", out_mess)
+
+    mess := qpid.ReceiveMessage(conn)
+
+    fmt.Println("Received ", string(mess))
+    qpid.DeleteQpidConnection(conn)
 }

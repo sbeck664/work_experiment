@@ -4,9 +4,11 @@
 #include <qpid/messaging/Duration.h>
 #include <qpid/messaging/Message.h>
 #include <qpid/messaging/Receiver.h>
+#include <qpid/messaging/Sender.h>
 #include <qpid/messaging/Session.h>
 
 #include <iostream>
+#include <map>
 
 struct _QpidConnection
 {
@@ -15,6 +17,7 @@ struct _QpidConnection
     qpid::messaging::Receiver receiver;
     bool connected;
     bool have_receiver;
+    std::map<std::string, qpid::messaging::Sender> senders;
 };
 
 QpidConnection new_qpid_connection(char *address)
@@ -48,14 +51,55 @@ void add_receiver(QpidConnection conn, char *queue_name)
     }
     try
     {
-        std::cout << "add_receiver" << std::endl;
         conn_obj->receiver = conn_obj->session.createReceiver(queue_name);
         conn_obj->have_receiver = true;
+        std::cout << "add_receiver" << std::endl;
     }
     catch(const std::exception &e)
     {
         std::cout << e.what() << std::endl;
     }
+}
+
+void add_sender(QpidConnection conn, char *sender_name, char *queue_name)
+{
+    _QpidConnection *conn_obj = (_QpidConnection *)conn;
+    if (!conn_obj->connected)
+    {
+        std::cout << "not connected" << std::endl;
+        return;
+    }
+    try
+    {
+        conn_obj->senders[sender_name] = conn_obj->session.createSender(queue_name);
+        std::cout << "add_sender" << std::endl;
+    }
+    catch(const std::exception &e)
+    {
+        std::cout << e.what() << std::endl;
+    }
+}
+
+void send_message(QpidConnection conn, char *sender_name, void *message_data, int message_size)
+{
+    _QpidConnection *conn_obj = (_QpidConnection *)conn;
+    if (!conn_obj->connected)
+    {
+        std::cout << "not connected" << std::endl;
+        return;
+    }
+
+    std::map<std::string, qpid::messaging::Sender>::iterator it;
+    it = conn_obj->senders.find(sender_name);
+    if (it == conn_obj->senders.end())
+    {
+        std::cout << "no such sender" << std::endl;
+        return;
+    }
+    qpid::messaging::Message message;
+    message.setContent((char *)message_data, message_size);
+    it->second.send(message);
+    std::cout << "send_message" << std::endl;
 }
 
 struct Message receive_message(QpidConnection conn)
@@ -67,7 +111,7 @@ struct Message receive_message(QpidConnection conn)
     {
         conn_obj->receiver.fetch(message, qpid::messaging::Duration::FOREVER);
         conn_obj->session.acknowledge(true);
-        std::cout << "receive_message and ack" << std::endl;
+        std::cout << "receive_message" << std::endl;
     }
     else
     {

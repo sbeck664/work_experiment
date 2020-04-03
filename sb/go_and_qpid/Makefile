@@ -1,5 +1,5 @@
 
-demo : demo.go libqpid.a qpid.h
+demo : demo.go qpid/qpid.go libqpid.a qpid.h
 	go build demo.go
 
 qpid.o : qpid.cpp qpid.h
