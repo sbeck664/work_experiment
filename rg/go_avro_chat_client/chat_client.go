@@ -11,29 +11,14 @@ import (
     "net"
     "os"
     "os/signal"
+    "strconv"
     "strings"
     "syscall"
     "time"
 )
 
 const (
-    black   = "\033[1;30m%s\033[0m"
-    red     = "\033[1;31m%s\033[0m"
-    green   = "\033[1;32m%s\033[0m"
-    yellow  = "\033[1;33m%s\033[0m"
-    purple  = "\033[1;34m%s\033[0m"
-    magenta = "\033[1;35m%s\033[0m"
-    teal    = "\033[1;36m%s\033[0m"
-)
-
-var (
-    colours = []string{
-        red,
-        green,
-        yellow,
-        purple,
-        teal,
-    }
+     black   = "\033[1;30m%s\033[0m"
 )
 
 const (
@@ -159,7 +144,7 @@ func start(port string, name string) {
 
     // Pick a random colour to use for the client's messages
     rand.Seed(time.Now().Unix())
-    colour := colours[rand.Int() % len(colours)]
+    colour := "\033[1;38;5;" + strconv.Itoa(rand.Intn(229)+1) + "m%s\033[0m"
 
     client := &Client{socket: connection, name: name, colour:colour}
 
