@@ -29,6 +29,10 @@ const (
     presenceResponseType = "presenceResponse"
 )
 
+const (
+    notifyIcon = "\u2732 "
+)
+
 var (
     writer = avro.NewSpecificDatumWriter()
     reader = avro.NewSpecificDatumReader()
@@ -65,21 +69,21 @@ func (client *Client) receive() {
                     fmt.Printf(decodedMessage.Colour, decodedMessage.Author + ": " + decodedMessage.Contents + "\n")
                 case joinedChatType:
                     if (decodedMessage.Author != client.name) {
-                        fmt.Printf(black, decodedMessage.Author + " has joined the chat\n")
+                        fmt.Printf(notifyIcon+(decodedMessage.Colour)+black, decodedMessage.Author, " has joined the chat\n")
                     } else {
                         client.send_notification(presenceRequestType)
                     }
                 case leftChatType:
                     if (decodedMessage.Author != client.name) {
-                        fmt.Printf(black, decodedMessage.Author + " has left the chat\n")
+                        fmt.Printf(notifyIcon+(decodedMessage.Colour)+black, decodedMessage.Author, " has left the chat\n")
                     }
                 case presenceRequestType:
                     if (decodedMessage.Author != client.name) {
-                        client.send_response(decodedMessage.Author, presenceResponseType, client.name + " is also a participant in this chat")
+                        client.send_response(decodedMessage.Author, presenceResponseType, client.name)
                     }
                 case presenceResponseType:
                     if (decodedMessage.Author == client.name) {
-                        fmt.Printf(black, decodedMessage.Contents + "\n")
+                        fmt.Printf(notifyIcon+(decodedMessage.Colour)+black, decodedMessage.Contents, " is also a participant in this chat\n")
                     }
             }
         }
@@ -135,7 +139,6 @@ func decode(encodedAvro []byte) (decodedMessage Message) {
 
 func start(port string, name string) {
 
-    fmt.Printf(black, "Hello " + name + ", welcome to the chat\n")
     connection, error := net.Dial("tcp", "localhost:" + port)
     if error != nil {
         fmt.Println(error)
@@ -145,6 +148,8 @@ func start(port string, name string) {
     // Pick a random colour to use for the client's messages
     rand.Seed(time.Now().Unix())
     colour := "\033[1;38;5;" + strconv.Itoa(rand.Intn(229)+1) + "m%s\033[0m"
+
+    fmt.Printf(notifyIcon+black+colour+black, "Hello ", name, ", welcome to the chat\n")
 
     client := &Client{socket: connection, name: name, colour:colour}
 
@@ -156,7 +161,7 @@ func start(port string, name string) {
     go func() {
         <-c
         client.send_notification(leftChatType)
-        fmt.Printf(black, "\rYou have left the chat\n")
+        fmt.Printf(black, "\r" + notifyIcon + "You have left the chat\n")
         os.Exit(0)
     }()
 
