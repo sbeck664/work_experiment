@@ -9,50 +9,47 @@
 
 #include <iostream>
 #include <map>
+#include <optional>
 
 struct _QpidConnection
 {
-    qpid::messaging::Connection conn;
-    qpid::messaging::Session session;
-    qpid::messaging::Receiver receiver;
-    bool connected;
-    bool have_receiver;
-    std::map<std::string, qpid::messaging::Sender> senders;
+    std::optional<qpid::messaging::Connection> conn {};
+    std::optional<qpid::messaging::Session> session {};
+    std::optional<qpid::messaging::Receiver> receiver {};
+    std::map<std::string, qpid::messaging::Sender> senders {};
 };
 
 QpidConnection new_qpid_connection(char *address)
 {
     std::cout << "new_qpid_connection" << std::endl;
-    _QpidConnection *conn = new _QpidConnection;
+    auto conn = new _QpidConnection;
 
     conn->conn = qpid::messaging::Connection(address, "");
-    conn->connected = false;
-    conn->have_receiver = false;
     try
     {
-        conn->conn.open();
-        conn->connected = true;
-        conn->session = conn->conn.createSession();
+        conn->conn->open();
+        conn->session = conn->conn->createSession();
     }
     catch(const std::exception &e)
     {
         std::cout << e.what() << std::endl;
+        conn->conn = {};
+        conn->session = {};
     }
-    return (void *)conn;
+    return reinterpret_cast<void *>(conn);
 }
 
 void add_receiver(QpidConnection conn, char *queue_name)
 {
-    _QpidConnection *conn_obj = (_QpidConnection *)conn;
-    if (!conn_obj->connected)
+    auto conn_obj = reinterpret_cast<_QpidConnection *>(conn);
+    if (!(conn_obj->conn && conn_obj->session))
     {
         std::cout << "not connected" << std::endl;
         return;
     }
     try
     {
-        conn_obj->receiver = conn_obj->session.createReceiver(queue_name);
-        conn_obj->have_receiver = true;
+        conn_obj->receiver = conn_obj->session->createReceiver(queue_name);
         std::cout << "add_receiver" << std::endl;
     }
     catch(const std::exception &e)
@@ -63,15 +60,15 @@ void add_receiver(QpidConnection conn, char *queue_name)
 
 void add_sender(QpidConnection conn, char *sender_name, char *queue_name)
 {
-    _QpidConnection *conn_obj = (_QpidConnection *)conn;
-    if (!conn_obj->connected)
+    auto conn_obj = reinterpret_cast<_QpidConnection *>(conn);
+    if (!(conn_obj->conn && conn_obj->session))
     {
         std::cout << "not connected" << std::endl;
         return;
     }
     try
     {
-        conn_obj->senders[sender_name] = conn_obj->session.createSender(queue_name);
+        conn_obj->senders[sender_name] = conn_obj->session->createSender(queue_name);
         std::cout << "add_sender" << std::endl;
     }
     catch(const std::exception &e)
@@ -82,22 +79,21 @@ void add_sender(QpidConnection conn, char *sender_name, char *queue_name)
 
 void send_message(QpidConnection conn, char *sender_name, void *message_data, int message_size)
 {
-    _QpidConnection *conn_obj = (_QpidConnection *)conn;
-    if (!conn_obj->connected)
+    auto conn_obj = reinterpret_cast<_QpidConnection *>(conn);
+    if (!(conn_obj->conn && conn_obj->session))
     {
         std::cout << "not connected" << std::endl;
         return;
     }
 
-    std::map<std::string, qpid::messaging::Sender>::iterator it;
-    it = conn_obj->senders.find(sender_name);
+    auto it = conn_obj->senders.find(sender_name);
     if (it == conn_obj->senders.end())
     {
         std::cout << "no such sender" << std::endl;
         return;
     }
     qpid::messaging::Message message;
-    message.setContent((char *)message_data, message_size);
+    message.setContent(reinterpret_cast<char *>(message_data), message_size);
     it->second.send(message);
     std::cout << "send_message" << std::endl;
 }
@@ -106,11 +102,11 @@ struct Message receive_message(QpidConnection conn)
 {
     static qpid::messaging::Message message;
 
-    _QpidConnection *conn_obj = (_QpidConnection *)conn;
-    if (conn_obj->connected && conn_obj->have_receiver)
+    auto conn_obj = reinterpret_cast<_QpidConnection *>(conn);
+    if (!(conn_obj->conn && conn_obj->session && conn_obj->receiver))
     {
-        conn_obj->receiver.fetch(message, qpid::messaging::Duration::FOREVER);
-        conn_obj->session.acknowledge(true);
+        conn_obj->receiver->fetch(message, qpid::messaging::Duration::FOREVER);
+        conn_obj->session->acknowledge(true);
         std::cout << "receive_message" << std::endl;
     }
     else
@@ -126,6 +122,6 @@ struct Message receive_message(QpidConnection conn)
 void delete_qpid_connection(QpidConnection conn)
 {
     std::cout << "delete_qpid_connection" << std::endl;
-    _QpidConnection *conn_obj = (_QpidConnection *)conn;
+    auto conn_obj = reinterpret_cast<_QpidConnection *>(conn);
     delete conn_obj;
 }
